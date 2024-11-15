@@ -5,7 +5,7 @@
 ### 📝 v1.0.0.0 - November 2024
 
 * A simple game loop render demo.
-* WPF applications use DirectDraw/DirectX for rendering to the GPU. This example project uses on;y the CPU to render moving objects but can easily handle 500+ objects moving and still remain performant.
+* WPF applications use DirectDraw/DirectX for rendering to the GPU. This example project uses only the CPU to render moving objects but can easily handle 500+ objects moving and still remain performant.
 * There is no collision detection or map loading routine as these depend on the type of game you're making. This is only an underpinning to show how the rendering of the main game loop can work.
 * It is possible to [host Direct3D](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/walkthrough-hosting-direct3d9-content-in-wpf?view=netframeworkdesktop-4.8) content in a WPF application.
 
