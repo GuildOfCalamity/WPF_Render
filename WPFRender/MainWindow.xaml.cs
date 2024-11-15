@@ -14,6 +14,15 @@ using System.Windows.Threading;
 
 namespace WPFRender;
 
+public enum PlayerDirection
+{
+    NONE = 0,
+    UP = 1,
+    DOWN = 2,
+    LEFT = 3,
+    RIGHT = 4,
+}
+
 public partial class MainWindow : Window, INotifyPropertyChanged
 {
     static int _warmUp = 1; // allow cycles to pass until the window if fully rendered
@@ -51,7 +60,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
-    int _objectCount = 100;
+    int _objectCount = 20;
     public int ObjectCount
     {
         get => _objectCount;
@@ -62,6 +71,17 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 _objectCount = value;
                 OnPropertyChanged();
             }
+        }
+    }
+
+    PlayerDirection _direction = PlayerDirection.NONE;
+    public PlayerDirection Direction
+    {
+        get => _direction;
+        set
+        {
+             _direction = value;
+             OnPropertyChanged();
         }
     }
 
@@ -95,6 +115,20 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
+    ImageSource? _statusImage = null;
+    public ImageSource? StatusImage
+    {
+        get => _statusImage;
+        set
+        {
+            if (_statusImage != value)
+            {
+                _statusImage = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
     public void OnPropertyChanged([CallerMemberName] string? propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     #endregion
@@ -110,6 +144,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         this.Closing += MainWindowOnClosing;
         this.Loaded += MainWindowOnLoaded;
+        this.KeyDown += MainWindowOnKeyDown;
         canvas.SizeChanged += CanvasOnSizeChanged;
 
         if (Debugger.IsAttached)
@@ -269,10 +304,45 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
 
     #region [Control Events] 
+    void MainWindowOnKeyDown(object sender, KeyEventArgs e)
+    {
+        StatusText = $"User pressed {e.Key} ({e.KeyStates})";
+        switch (e.Key)
+        {
+            case Key.W:
+            case Key.Up:
+                Direction = PlayerDirection.UP;
+                StatusImage = "pack://application:,,,/Assets/UpIcon.png".ReturnImageSource();
+                break;
+            case Key.S:
+            case Key.Down:
+                Direction = PlayerDirection.DOWN;
+                StatusImage = "pack://application:,,,/Assets/DownIcon.png".ReturnImageSource();
+                break;
+            case Key.A:
+            case Key.Left:
+                Direction = PlayerDirection.LEFT;
+                StatusImage = "pack://application:,,,/Assets/LeftIcon.png".ReturnImageSource();
+                break;
+            case Key.D:
+            case Key.Right:
+                Direction = PlayerDirection.RIGHT;
+                StatusImage = "pack://application:,,,/Assets/RightIcon.png".ReturnImageSource();
+                break;
+            default:
+                Direction = PlayerDirection.NONE;
+                StatusImage = "pack://application:,,,/Assets/AppIcon.png".ReturnImageSource();
+                break;
+        }
+    }
+
     void MainWindowOnLoaded(object? sender, RoutedEventArgs e)
     {
         // Get the IntPtr of the window
         winHnd = new WindowInteropHelper(this).Handle;
+        
+        StatusText = "Initializing, please wait…";
+        StatusImage = "pack://application:,,,/Assets/AppIcon.png".ReturnImageSource();
 
         if (_useGeometry)
         {

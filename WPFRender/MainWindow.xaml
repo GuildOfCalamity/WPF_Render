@@ -36,7 +36,7 @@
                 HorizontalAlignment="Left"
                 VerticalAlignment="Center"
                 RenderOptions.BitmapScalingMode="Fant"
-                Source="Assets/AppIcon.png"
+                Source="{Binding StatusImage, UpdateSourceTrigger=PropertyChanged}"
                 Stretch="Uniform"
                 Visibility="{Binding IsBusy, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource boolToVisibility}, ConverterParameter='inverse'}" />
 
