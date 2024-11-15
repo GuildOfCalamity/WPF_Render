@@ -1,0 +1,145 @@
+﻿<UserControl
+    x:Class="WPFRender.Controls.DotAnimationControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:WPFRender.Controls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    x:Name="animationControl"
+    d:DesignHeight="40"
+    d:DesignWidth="120"
+    Background="Transparent"
+    mc:Ignorable="d">
+
+    <!--#region [Extras]-->
+    <UserControl.Style>
+        <Style>
+            <Style.Triggers>
+                <EventTrigger RoutedEvent="UserControl.Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation
+                                Storyboard.TargetProperty="Opacity"
+                                From="0.0"
+                                To="1.0"
+                                Duration="0:0:0.5" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Style>
+    <!--#endregion-->
+
+    <Grid
+        x:Name="hostGrid"
+        Width="120"
+        Height="Auto"
+        HorizontalAlignment="Stretch"
+        VerticalAlignment="Center">
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="cc1" Width="1*" />
+            <ColumnDefinition x:Name="cc2" Width="1*" />
+            <ColumnDefinition x:Name="cc3" Width="1*" />
+            <ColumnDefinition x:Name="cc4" Width="1*" />
+        </Grid.ColumnDefinitions>
+
+        <!--#region [Rectangles]-->
+        <Rectangle
+            x:Name="Dot1"
+            Grid.Column="0"
+            Width="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Height="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Margin="-2"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Fill="{Binding FillColor, ElementName=animationControl, FallbackValue=#9090B0}"
+            RadiusX="5"
+            RadiusY="5"
+            RenderTransformOrigin="0.5,0.5" />
+        <Rectangle
+            x:Name="Dot2"
+            Grid.Column="1"
+            Width="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Height="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Margin="-2"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Fill="{Binding FillColor, ElementName=animationControl, FallbackValue=#9090B0}"
+            RadiusX="5"
+            RadiusY="5"
+            RenderTransformOrigin="0.5,0.5" />
+        <Rectangle
+            x:Name="Dot3"
+            Grid.Column="2"
+            Width="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Height="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Margin="-2"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Fill="{Binding FillColor, ElementName=animationControl, FallbackValue=#9090B0}"
+            RadiusX="5"
+            RadiusY="5"
+            RenderTransformOrigin="0.5,0.5" />
+        <Rectangle
+            x:Name="Dot4"
+            Grid.Column="3"
+            Width="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Height="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Margin="-2"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Fill="{Binding FillColor, ElementName=animationControl, FallbackValue=#9090B0}"
+            RadiusX="5"
+            RadiusY="5"
+            RenderTransformOrigin="0.5,0.5" />
+        <!--#endregion-->
+
+        <!--#region [Circles]-->
+        <!--
+        <Ellipse
+            x:Name="Dot1"
+            Grid.Column="0"
+            Width="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Height="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Margin="-2"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Fill="{Binding FillColor, ElementName=animationControl, FallbackValue=#F0F0F0}"
+            RenderTransformOrigin="0.5,0.5" />
+        <Ellipse
+            x:Name="Dot2"
+            Grid.Column="1"
+            Width="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Height="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Margin="-2"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Fill="{Binding FillColor, ElementName=animationControl, FallbackValue=#F0F0F0}"
+            RenderTransformOrigin="0.5,0.5" />
+        <Ellipse
+            x:Name="Dot3"
+            Grid.Column="2"
+            Width="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Height="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Margin="-2"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Fill="{Binding FillColor, ElementName=animationControl, FallbackValue=#F0F0F0}"
+            RenderTransformOrigin="0.5,0.5" />
+        <Ellipse
+            x:Name="Dot4"
+            Grid.Column="3"
+            Width="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Height="{Binding DotSize, ElementName=animationControl, FallbackValue=18}"
+            Margin="-2"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Fill="{Binding FillColor, ElementName=animationControl, FallbackValue=#F0F0F0}"
+            RenderTransformOrigin="0.5,0.5" />
+        -->
+        <!--#region-->
+
+    </Grid>
+</UserControl>
