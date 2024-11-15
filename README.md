@@ -1,6 +1,6 @@
 ## 💻 WPF - Game Engine Render Demo
 
-![Example Picture](./WPFRender/Assets/ScreenShot.png)
+![Example Picture](./WPFRender/Assets/Screenshot.png)
 
 ### 📝 v1.0.0.0 - November 2024
 
