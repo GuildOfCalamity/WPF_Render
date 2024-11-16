@@ -1,6 +1,5 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
-using System.Net.Http;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -14,15 +13,9 @@ using System.Windows.Threading;
 
 namespace WPFRender;
 
-public enum PlayerDirection
-{
-    NONE = 0,
-    UP = 1,
-    DOWN = 2,
-    LEFT = 3,
-    RIGHT = 4,
-}
-
+/// <summary>
+/// A simple game loop render demo using WPF.
+/// </summary>
 public partial class MainWindow : Window, INotifyPropertyChanged
 {
     static int _warmUp = 1; // allow cycles to pass until the window if fully rendered
@@ -60,7 +53,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
-    int _objectCount = 20;
+    int _objectCount = 100;
     public int ObjectCount
     {
         get => _objectCount;
@@ -328,6 +321,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             case Key.Right:
                 Direction = PlayerDirection.RIGHT;
                 StatusImage = "pack://application:,,,/Assets/RightIcon.png".ReturnImageSource();
+                break;
+            case Key.Escape:
+                _shutdown = true;
+                this.Close();
                 break;
             default:
                 Direction = PlayerDirection.NONE;
