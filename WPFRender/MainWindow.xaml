@@ -7,7 +7,7 @@
     xmlns:local="clr-namespace:WPFRender"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Title="WPF Render Demo"
-    Width="800"
+    Width="850"
     Height="700"
     Background="{StaticResource backgroundGradient}"
     Icon="Assets/AppIcon.png"
@@ -21,7 +21,7 @@
         Style="{StaticResource borderBackground}">
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="200px" />
+                <ColumnDefinition Width="250px" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
@@ -32,13 +32,20 @@
             <Image
                 Grid.Row="0"
                 Width="40"
-                Margin="8,4,0,0"
+                Margin="8,5,0,0"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Center"
                 RenderOptions.BitmapScalingMode="Fant"
                 Source="{Binding StatusImage, UpdateSourceTrigger=PropertyChanged}"
                 Stretch="Uniform"
                 Visibility="{Binding IsBusy, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource boolToVisibility}, ConverterParameter='inverse'}" />
+
+            <CheckBox
+                Margin="8,5,0,0"
+                HorizontalAlignment="Center"
+                Content="Geometry"
+                IsChecked="{Binding UseGeometry, UpdateSourceTrigger=PropertyChanged}"
+                Style="{StaticResource ReformedCheckBox}" />
 
             <ctrl:DotAnimationControl
                 Grid.Row="0"
@@ -58,7 +65,7 @@
                 HorizontalAlignment="Left"
                 VerticalAlignment="Center"
                 FontSize="18"
-                Foreground="{StaticResource geometryGradient}"
+                Foreground="{StaticResource textGradient}"
                 Text="{Binding StatusText, UpdateSourceTrigger=PropertyChanged}"
                 TextWrapping="Wrap" />
 

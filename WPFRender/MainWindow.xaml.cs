@@ -24,7 +24,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     static double _marginX = 10;
     static double _marginY = 10;
     static bool _shutdown = false;
-    static bool _useGeometry = false;
     static IntPtr winHnd = IntPtr.Zero;
     static ValueStopwatch _vsw = ValueStopwatch.StartNew();
     List<RectangleObject> _rects = new();
@@ -40,16 +39,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         get => _isBusy;
         set
         {
-            if (_isBusy != value) // This will alleviate unnecessary UI draw calls.
-            {
-                _isBusy = value;
-                OnPropertyChanged();
+            _isBusy = value;
+            OnPropertyChanged();
 
-                if (_isBusy)
-                    AppIsBusy();
-                else
-                    AppIsNotBusy();
-            }
+            if (_isBusy)
+                AppIsBusy();
+            else
+                AppIsNotBusy();
         }
     }
 
@@ -63,6 +59,40 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             {
                 _objectCount = value;
                 OnPropertyChanged();
+            }
+        }
+    }
+
+    bool _useGeometry= false;
+    public bool UseGeometry
+    {
+        get => _useGeometry;
+        set
+        {
+            _useGeometry = value;
+            OnPropertyChanged();
+            if (_useGeometry)
+            {
+                canvas.Children.Clear();
+                foreach (var rg in _rects)
+                {
+                    canvas.Children.Add(new Path()
+                    {
+                        Data = rg.Rectangle,
+                        Opacity = 0.8,
+                        StrokeThickness = 3,
+                        Stroke = Extensions.GetAppResource<Brush>("geometryGradient"),
+                        Fill = Extensions.GetAppResource<Brush>("animationGradient"),
+                    });
+                }
+            }
+            else
+            {
+                canvas.Children.Clear();
+                foreach (var img in _images)
+                {
+                    canvas.Children.Add(img.Image);
+                }
             }
         }
     }
@@ -135,9 +165,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         InitializeComponent();
 
-        this.Closing += MainWindowOnClosing;
+        this.ContentRendered += MainWindowOnContentRendered;
         this.Loaded += MainWindowOnLoaded;
         this.KeyDown += MainWindowOnKeyDown;
+        this.Closing += MainWindowOnClosing;
         canvas.SizeChanged += CanvasOnSizeChanged;
 
         if (Debugger.IsAttached)
@@ -231,7 +262,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     ///</summary>
     void UpdateGameState()
     {
-        if (_useGeometry)
+        if (UseGeometry)
         {
             foreach (var rg in _rects)
             {
@@ -274,7 +305,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         this.Dispatcher?.Invoke(() =>
         {
-            if (_useGeometry)
+            if (UseGeometry)
             {
                 foreach (var rg in _rects)
                 {
@@ -297,6 +328,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
 
     #region [Control Events] 
+    /// <summary>
+    /// Typically this is the first event once the <see cref="Window"/> is shown.
+    /// You can use this to load configs or map data for the game.
+    /// </summary>
+    void MainWindowOnContentRendered(object? sender, EventArgs e) => IsBusy = true;
+
     void MainWindowOnKeyDown(object sender, KeyEventArgs e)
     {
         StatusText = $"User pressed {e.Key} ({e.KeyStates})";
@@ -341,80 +378,70 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         StatusText = "Initializing, please wait…";
         StatusImage = "pack://application:,,,/Assets/AppIcon.png".ReturnImageSource();
 
-        if (_useGeometry)
+        #region [Create the RenderObjects]
+
+        /** Instantiate Shapes **/
+        for (int i = 1; i < ObjectCount; i++)
         {
-            // Create the RenderObjects (performance starts to suffer above 500 objects)
-            for (int i = 1; i < ObjectCount; i++)
+            var X = Random.Shared.Next(20, (int)_maxWidth - 30 > 0 ? (int)_maxWidth - 30 : 400);
+            var Y = Random.Shared.Next(20, (int)_maxHeight - 30 > 0 ? (int)_maxHeight - 30 : 400);
+            var size = Random.Shared.Next(11, 42);
+            _rects.Add(new RectangleObject
             {
-                var X = Random.Shared.Next(20, (int)_maxWidth - 30 > 0 ? (int)_maxWidth - 30 : 400);
-                var Y = Random.Shared.Next(20, (int)_maxHeight - 30 > 0 ? (int)_maxHeight - 30 : 400);
-                var size = Random.Shared.Next(11, 42);
-                _rects.Add(new RectangleObject
-                {
-                    Size = size,
-                    PosX = X,
-                    PosY = Y,
-                    SpeedX = RandSpeed(),
-                    SpeedY = RandSpeed(),
-                    Rectangle = new RectangleGeometry(new Rect(X, Y, size, size), 6, 6),
-                });
-            }
-
-            // Add each RenderObject to the canvas
-            foreach (var rg in _rects)
-            {
-                canvas.Children.Add(new Path()
-                {
-                    Data = rg.Rectangle,
-                    Opacity = 0.8,
-                    StrokeThickness = 3,
-                    Stroke = Extensions.GetAppResource<Brush>("geometryGradient"),
-                    Fill = Extensions.GetAppResource<Brush>("animationGradient"),
-                });
-            }
+                Size = size,
+                PosX = X,
+                PosY = Y,
+                SpeedX = RandSpeed(),
+                SpeedY = RandSpeed(),
+                Rectangle = new RectangleGeometry(new Rect(X, Y, size, size), 6, 6),
+            });
         }
-        else // sprites
+
+        /** Instantiate Sprites **/
+        for (int i = 1; i < ObjectCount; i++)
         {
-            for (int i = 1; i < ObjectCount; i++)
+            var X = Random.Shared.Next(20, (int)_maxWidth - 100 > 0 ? (int)_maxWidth - 100 : 400);
+            var Y = Random.Shared.Next(20, (int)_maxHeight - 100 > 0 ? (int)_maxHeight - 100 : 400);
+            var size = Random.Shared.Next(32, 91);
+            var img = new Image { Margin = new Thickness(0), Opacity = 0.7 };
+            var bi = new BitmapImage();
+            /** You can use the begin/end init to change the image during run-time **/
+            bi.BeginInit();
+            if (i % 2 == 0)
+                bi.UriSource = new Uri("Assets/FireIcon2.png", UriKind.Relative);
+            else
+                bi.UriSource = new Uri("Assets/FireIcon3.png", UriKind.Relative);
+            bi.EndInit();
+            img.Source = bi;
+            img.VerticalAlignment = VerticalAlignment.Center;
+            img.HorizontalAlignment = HorizontalAlignment.Center;
+            img.Width = img.Height = size;
+            
+            // You can adjust this as you see fit, "BitmapScalingMode.Fant" works best for scaling tiny images.
+            RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.Linear);
+
+            _images.Add(new ImageObject
             {
-                var X = Random.Shared.Next(20, (int)_maxWidth - 100 > 0 ? (int)_maxWidth - 100 : 400);
-                var Y = Random.Shared.Next(20, (int)_maxHeight - 100 > 0 ? (int)_maxHeight - 100 : 400);
-                var size = Random.Shared.Next(32, 91);
-                var img = new Image { Margin = new Thickness(0), Opacity = 0.6 };
-                var bi = new BitmapImage();
-                /** You can use the begin/end init to change the image during run-time **/
-                bi.BeginInit();
-                if (i % 2 == 0)
-                    bi.UriSource = new Uri("Assets/FireIcon2.png", UriKind.Relative);
-                else
-                    bi.UriSource = new Uri("Assets/FireIcon3.png", UriKind.Relative);
-                bi.EndInit();
-                img.Source = bi;
-                img.VerticalAlignment = VerticalAlignment.Center;
-                img.HorizontalAlignment = HorizontalAlignment.Center;
-                img.Width = img.Height = size;
-                _images.Add(new ImageObject
-                {
-                    Size = size,
-                    PosX = X,
-                    PosY = Y,
-                    SpeedX = RandSpeed(),
-                    SpeedY = RandSpeed(),
-                    Image = img,
-                });
+                Size = size,
+                PosX = X,
+                PosY = Y,
+                SpeedX = RandSpeed(),
+                SpeedY = RandSpeed(),
+                Image = img,
+            });
 
-                /** You can also apply the BitmapImage to an ImageBrush **/
-                //var ib = new ImageBrush(new BitmapImage(new Uri(@"pack://application:,,,/Assets/AppLogo.png")));
-                //button.Background = ib;
+            /** You can also apply the BitmapImage to an ImageBrush **/
+            //var ib = new ImageBrush(new BitmapImage(new Uri(@"pack://application:,,,/Assets/AppLogo.png")));
+            //button.Background = ib;
 
-            }
-
-            // Add each RenderObject to the canvas
-            foreach (var img in _images)
-            {
-                canvas.Children.Add(img.Image);
-            }
         }
+        #endregion
+
+        Task.Run(async () =>
+        {
+            await Task.Delay(2000);
+            this.Dispatcher?.Invoke(() => { UseGeometry = IsBusy = false; });
+        });
     }
 
     void CanvasOnSizeChanged(object? sender, SizeChangedEventArgs e)
