@@ -2,6 +2,12 @@
 
 ![Example Picture](./WPFRender/Assets/Screenshot.png)
 
+**Dependencies**
+
+| Assembly | Version |
+| ---- | ---- |
+| NET Core | 8.0 |
+
 ### 📝 v1.0.0.0 - November 2024
 
 * A simple game loop render demo.
