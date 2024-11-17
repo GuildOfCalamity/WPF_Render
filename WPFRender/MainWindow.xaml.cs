@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
@@ -15,6 +16,8 @@ namespace WPFRender;
 
 /// <summary>
 /// A simple game loop render demo using WPF.
+/// I'll demonstrate moving images and objects by adjusting their
+/// X and Y canvas positions, also by wiring up Storyboard animations.
 /// </summary>
 public partial class MainWindow : Window, INotifyPropertyChanged
 {
@@ -198,6 +201,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         ThreadPool.QueueUserWorkItem(obj => AccumulatorStyleLoop(60));
     }
 
+    #region [Core Game Loop]
     /// <summary>
     /// <para>
     ///  This is the superior game loop w/r/t the alternative <see cref="Thread.Sleep(int)"/> technique.
@@ -319,13 +323,19 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 {
                     if (img.Image != null)
                     {
-                        img.Image.Margin = new Thickness(img.PosX, img.PosY, 0, 0);
+                        // You can move the image by setting its dependency object in the canvas:
+                        Canvas.SetLeft(img.Image, img.PosX);
+                        Canvas.SetTop(img.Image, img.PosY);
+                        
+                        // ...or, you can move the image by adjusting the object's margin:
+                        //img.Image.Margin = new Thickness(img.PosX, img.PosY, 0, 0);
                     }
                 }
             }
 
         }, DispatcherPriority.Render);
     }
+    #endregion
 
     #region [Control Events] 
     /// <summary>
@@ -396,7 +406,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 Rectangle = new RectangleGeometry(new Rect(X, Y, size, size), 6, 6),
             });
         }
-
+        
         /** Instantiate Sprites **/
         for (int i = 1; i < ObjectCount; i++)
         {
@@ -419,7 +429,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             
             // You can adjust this as you see fit, "BitmapScalingMode.Fant" works best for scaling tiny images.
             RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.Linear);
-
+        
             _images.Add(new ImageObject
             {
                 Size = size,
@@ -429,13 +439,27 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 SpeedY = RandSpeed(),
                 Image = img,
             });
-
+        
             /** You can also apply the BitmapImage to an ImageBrush **/
             //var ib = new ImageBrush(new BitmapImage(new Uri(@"pack://application:,,,/Assets/AppLogo.png")));
             //button.Background = ib;
-
+        
         }
         #endregion
+
+        //for (int i = 1; i < ObjectCount; i++)
+        //{
+        //    var x1 = Random.Shared.Next(100, (int)_maxWidth - 100);
+        //    var y1 = Random.Shared.Next(100, (int)_maxWidth - 100);
+        //    var x2 = Random.Shared.Next(100, (int)_maxWidth - 100);
+        //    var y2 = Random.Shared.Next(100, (int)_maxWidth - 100);
+        //    AddAnimatedLineGeometry(canvas, new Point(x1, y1), new Point(x2, y2), 2);
+        //}
+
+        // Example image source
+        //ImageSource? imageSource = new ImageSourceConverter().ConvertFromString("AppIcon.png") as ImageSource;
+        ImageSource? imageSource = "pack://application:,,,/Assets/AppIcon.png".ReturnImageSource();
+        AddAnimatedImageBrush(canvas, new Rect(20, 20, 50, 50), new Rect(300, 300, 250, 250), 2, imageSource);
 
         Task.Run(async () =>
         {
@@ -458,6 +482,102 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     #endregion
 
     #region [Extras]
+    /// <summary>
+    /// Creates a <see cref="ImageBrush"/> and animates it.
+    /// </summary>
+    void AddAnimatedImageBrush(Canvas canvas, Rect startRect, Rect endRect, double durationSeconds, ImageSource imageSource)
+    {
+        ImageBrush imageBrush = new ImageBrush { ImageSource = imageSource, Stretch = Stretch.UniformToFill };
+
+        // Create a Rectangle and fill it with the ImageBrush
+        Rectangle rect = new Rectangle
+        {
+            Width = startRect.Width,
+            Height = startRect.Height,
+            Fill = imageBrush
+        };
+
+        Canvas.SetLeft(rect, startRect.X);
+        Canvas.SetTop(rect, startRect.Y);
+        canvas.Children.Add(rect);
+
+        // Create animations for X and Y position of the Rectangle
+        DoubleAnimation leftAnimation = new DoubleAnimation
+        {
+            From = startRect.X,
+            To = endRect.X,
+            Duration = TimeSpan.FromSeconds(durationSeconds)
+        };
+
+        DoubleAnimation topAnimation = new DoubleAnimation
+        {
+            From = startRect.Y,
+            To = endRect.Y,
+            Duration = TimeSpan.FromSeconds(durationSeconds)
+        };
+
+        // Apply animations to the Rectangle
+        rect.BeginAnimation(Canvas.LeftProperty, leftAnimation);
+        rect.BeginAnimation(Canvas.TopProperty, topAnimation);
+
+        // Optionally animate the Width and Height
+        if (startRect.Width != endRect.Width || startRect.Height != endRect.Height)
+        {
+            DoubleAnimation widthAnimation = new DoubleAnimation
+            {
+                From = startRect.Width,
+                To = endRect.Width,
+                Duration = TimeSpan.FromSeconds(durationSeconds)
+            };
+
+            DoubleAnimation heightAnimation = new DoubleAnimation
+            {
+                From = startRect.Height,
+                To = endRect.Height,
+                Duration = TimeSpan.FromSeconds(durationSeconds)
+            };
+
+            rect.BeginAnimation(Rectangle.WidthProperty, widthAnimation);
+            rect.BeginAnimation(Rectangle.HeightProperty, heightAnimation);
+        }
+    }
+
+    /// <summary>
+    /// Creates a <see cref="LineGeometry"/> and animates it.
+    /// </summary>
+    void AddAnimatedLineGeometry(Canvas canvas, Point startPoint, Point endPoint, double durationSeconds)
+    {
+        // Create a LineGeometry
+        LineGeometry lineGeometry = new LineGeometry
+        {
+            StartPoint = startPoint,
+            EndPoint = startPoint // Start both ends at the same point for animation
+        };
+
+        // Create a Path to render the LineGeometry with a random color
+        Path linePath = new Path
+        {
+            Stroke = Extensions.GenerateRandomBrush(), // Set random brush for the stroke
+            StrokeThickness = 3,
+            Data = lineGeometry
+        };
+
+        // Add the Path to the Canvas
+        canvas.Children.Add(linePath);
+
+        // Create animations for the X and Y components of the EndPoint
+        PointAnimation endPointAnimation = new PointAnimation
+        {
+            From = startPoint,
+            To = endPoint,
+            AutoReverse = true,
+            Duration = TimeSpan.FromSeconds(durationSeconds)
+        };
+
+        // Apply animation to the EndPoint of the LineGeometry
+        lineGeometry.BeginAnimation(LineGeometry.EndPointProperty, endPointAnimation);
+    }
+
     /// <summary>
     /// <para>
     ///  This event is tightly coupled/synchronized with the display's refresh rate, 

@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
+using System.Text.RegularExpressions;
 
 namespace WPFRender;
 
@@ -35,6 +36,16 @@ public static class Extensions
                rect1.Right > rect2.Left &&
                rect1.Top < rect2.Bottom &&
                rect1.Bottom > rect2.Top;
+    }
+
+    /// <summary>
+    /// Returns the Euclidian distance between two <see cref="System.Windows.Media.Color"/>s.
+    /// </summary>
+    /// <param name="color1">1st <see cref="System.Windows.Media.Color"/></param>
+    /// <param name="color2">2nd <see cref="System.Windows.Media.Color"/></param>
+    public static double ColorDistance(System.Windows.Media.Color color1, System.Windows.Media.Color color2)
+    {
+        return Math.Sqrt(Math.Pow(color1.R - color2.R, 2) + Math.Pow(color1.G - color2.G, 2) + Math.Pow(color1.B - color2.B, 2));
     }
 
     /// <summary>
@@ -384,6 +395,15 @@ public static class Extensions
         };
 
         return lgb;
+    }
+
+    public static SolidColorBrush GenerateRandomBrush()
+    {
+        // Generate a random color
+        byte r = (byte)Random.Shared.Next(0, 256);
+        byte g = (byte)Random.Shared.Next(0, 256);
+        byte b = (byte)Random.Shared.Next(0, 256);
+        return new SolidColorBrush(Color.FromRgb(r, g, b));
     }
 
     /// <summary>
