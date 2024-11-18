@@ -1,6 +1,15 @@
 ﻿
 namespace WPFRender;
 
+public enum RenderType
+{
+    SHAPE = 0,
+    IMAGE = 1,
+    BRUSH = 2,
+    LINE = 3,
+    DRAWING = 4,
+}
+
 public enum PlayerDirection
 {
     NONE = 0,

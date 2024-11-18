@@ -40,12 +40,14 @@
                 Stretch="Uniform"
                 Visibility="{Binding IsBusy, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource boolToVisibility}, ConverterParameter='inverse'}" />
 
-            <CheckBox
+            <Button
+                MinWidth="100"
                 Margin="8,5,0,0"
                 HorizontalAlignment="Center"
-                Content="Geometry"
-                IsChecked="{Binding UseGeometry, UpdateSourceTrigger=PropertyChanged}"
-                Style="{StaticResource ReformedCheckBox}" />
+                Command="{Binding CycleCommand}"
+                Content="Cycle"
+                Template="{StaticResource ReformedButton}"
+                ToolTip="Click this button to change the render object type." />
 
             <ctrl:DotAnimationControl
                 Grid.Row="0"

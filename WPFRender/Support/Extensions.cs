@@ -4,13 +4,14 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Text.RegularExpressions;
+using System.IO;
 
 namespace WPFRender;
 
@@ -47,6 +48,143 @@ public static class Extensions
     {
         return Math.Sqrt(Math.Pow(color1.R - color2.R, 2) + Math.Pow(color1.G - color2.G, 2) + Math.Pow(color1.B - color2.B, 2));
     }
+
+    /// <summary>
+    /// Finds the contrast ratio.
+    /// This is helpful for determining if one control's foreground and another control's background will be hard to distinguish.
+    /// https://www.w3.org/WAI/GL/wiki/Contrast_ratio
+    /// (L1 + 0.05) / (L2 + 0.05), where
+    /// L1 is the relative luminance of the lighter of the colors, and
+    /// L2 is the relative luminance of the darker of the colors.
+    /// </summary>
+    /// <param name="first"><see cref="System.Windows.Media.Color"/></param>
+    /// <param name="second"><see cref="System.Windows.Media.Color"/></param>
+    /// <returns>ratio between relative luminance</returns>
+    public static double CalculateContrastRatio(System.Windows.Media.Color first, System.Windows.Media.Color second)
+    {
+        double relLuminanceOne = GetRelativeLuminance(first);
+        double relLuminanceTwo = GetRelativeLuminance(second);
+        return (Math.Max(relLuminanceOne, relLuminanceTwo) + 0.05) / (Math.Min(relLuminanceOne, relLuminanceTwo) + 0.05);
+    }
+
+    /// <summary>
+    /// Gets the relative luminance.
+    /// https://www.w3.org/WAI/GL/wiki/Relative_luminance
+    /// For the sRGB colorspace, the relative luminance of a color is defined as L = 0.2126 * R + 0.7152 * G + 0.0722 * B
+    /// </summary>
+    /// <param name="c"><see cref="System.Windows.Media.Color"/></param>
+    /// <remarks>This is mainly used by <see cref="Extensions.CalculateContrastRatio(Color, Color)"/></remarks>
+    public static double GetRelativeLuminance(System.Windows.Media.Color c)
+    {
+        double rSRGB = c.R / 255.0;
+        double gSRGB = c.G / 255.0;
+        double bSRGB = c.B / 255.0;
+
+        // WebContentAccessibilityGuideline 2.x definition was 0.03928 (incorrect)
+        // WebContentAccessibilityGuideline 3.x definition is 0.04045 (correct)
+        double r = rSRGB <= 0.04045 ? rSRGB / 12.92 : Math.Pow(((rSRGB + 0.055) / 1.055), 2.4);
+        double g = gSRGB <= 0.04045 ? gSRGB / 12.92 : Math.Pow(((gSRGB + 0.055) / 1.055), 2.4);
+        double b = bSRGB <= 0.04045 ? bSRGB / 12.92 : Math.Pow(((bSRGB + 0.055) / 1.055), 2.4);
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+
+    /// <summary>
+    /// Calculates the linear interpolated Color based on the given Color values.
+    /// </summary>
+    /// <param name="colorFrom">Source Color.</param>
+    /// <param name="colorTo">Target Color.</param>
+    /// <param name="amount">Weight given to the target color.</param>
+    /// <returns>Linear Interpolated Color.</returns>
+    public static System.Windows.Media.Color Lerp(this System.Windows.Media.Color colorFrom, System.Windows.Media.Color colorTo, float amount)
+    {
+        // Convert colorFrom components to lerp-able floats
+        float sa = colorFrom.A, sr = colorFrom.R, sg = colorFrom.G, sb = colorFrom.B;
+
+        // Convert colorTo components to lerp-able floats
+        float ea = colorTo.A, er = colorTo.R, eg = colorTo.G, eb = colorTo.B;
+
+        // lerp the colors to get the difference
+        byte a = (byte)Math.Max(0, Math.Min(255, sa.Lerp(ea, amount))),
+             r = (byte)Math.Max(0, Math.Min(255, sr.Lerp(er, amount))),
+             g = (byte)Math.Max(0, Math.Min(255, sg.Lerp(eg, amount))),
+             b = (byte)Math.Max(0, Math.Min(255, sb.Lerp(eb, amount)));
+
+        // return the new color
+        return System.Windows.Media.Color.FromArgb(a, r, g, b);
+    }
+
+    /// <summary>
+    /// Darkens the color by the given percentage using lerp.
+    /// </summary>
+    /// <param name="color">Source color.</param>
+    /// <param name="amount">Percentage to darken. Value should be between 0 and 1.</param>
+    /// <returns>Color</returns>
+    public static System.Windows.Media.Color DarkerBy(this System.Windows.Media.Color color, float amount)
+    {
+        return color.Lerp(Colors.Black, amount);
+    }
+
+    /// <summary>
+    /// Lightens the color by the given percentage using lerp.
+    /// </summary>
+    /// <param name="color">Source color.</param>
+    /// <param name="amount">Percentage to lighten. Value should be between 0 and 1.</param>
+    /// <returns>Color</returns>
+    public static System.Windows.Media.Color LighterBy(this System.Windows.Media.Color color, float amount)
+    {
+        return color.Lerp(Colors.White, amount);
+    }
+
+    /// <summary>
+    /// Clamping function for any value of type <see cref="IComparable{T}"/>.
+    /// </summary>
+    /// <param name="val">initial value</param>
+    /// <param name="min">lowest range</param>
+    /// <param name="max">highest range</param>
+    /// <returns>clamped value</returns>
+    public static T Clamp<T>(this T val, T min, T max) where T : IComparable<T>
+    {
+        return val.CompareTo(min) < 0 ? min : (val.CompareTo(max) > 0 ? max : val);
+    }
+
+    /// <summary>
+    /// Used to gradually reduce the effect of certain changes over time.
+    /// </summary>
+    /// <param name="value">Some initial value, e.g. 40</param>
+    /// <param name="target">Where we want the value to end up, e.g. 100</param>
+    /// <param name="rate">How quickly we want to reach the target, e.g. 0.25</param>
+    /// <returns></returns>
+    public static float Dampen(this float value, float target, float rate)
+    {
+        float dampenedValue = value;
+        if (value != target)
+        {
+            float dampeningFactor = MathF.Pow(1 - MathF.Abs((value - target) / rate), 2);
+            dampenedValue = target + ((value - target) * dampeningFactor);
+        }
+        return dampenedValue;
+    }
+
+    /// <summary>
+    /// Linear interpolation for a range of floats.
+    /// </summary>
+    public static float Lerp(this float start, float end, float amount = 0.5F) => start + (end - start) * amount;
+    
+    /// <summary>
+    /// Linear interpolation for a range of double.
+    /// </summary>
+    public static double Lerp(this double start, double end, double amount = 0.5F) => start + (end - start) * amount;
+
+    /// <summary>
+    /// Scales a range of floats. [baseMin to baseMax] will become [limitMin to limitMax]
+    /// </summary>
+    public static float Scale(this float valueIn, float baseMin, float baseMax, float limitMin, float limitMax) => ((limitMax - limitMin) * (valueIn - baseMin) / (baseMax - baseMin)) + limitMin;
+    
+    /// <summary>
+    /// Scales a range of double. [baseMin to baseMax] will become [limitMin to limitMax]
+    /// </summary>
+    public static double Scale(this double valueIn, double baseMin, double baseMax, double limitMin, double limitMax) => ((limitMax - limitMin) * (valueIn - baseMin) / (baseMax - baseMin)) + limitMin;
+
 
     /// <summary>
     /// If not using a WPF or WinUI app, set <paramref name="consoleApp"/> to true.
@@ -514,6 +652,16 @@ public static class Extensions
     }
 
     /// <summary>
+    /// Increments through an enum type.
+    /// </summary>
+    public static T Next<T>(this T value) where T : struct, Enum
+    {
+        var values = Enum.GetValues(typeof(T)).Cast<T>();
+        var index = (values.ToList().IndexOf(value) + 1) % values.Count();
+        return values.ElementAt(index);
+    }
+
+    /// <summary>
     /// <para>Creates a log-string from the Exception.</para>
     /// <para>The result includes the stacktrace, innerexception et cetera, separated by <see cref="Environment.NewLine"/>.</para>
     /// </summary>
@@ -743,6 +891,148 @@ public static class Extensions
             Debug.WriteLine($"[WARNING] GetBitmapFrame(FileFormatException): {ex.Message}");
         }
         return null;
+    }
+
+    /// <summary>
+    /// To populate parameters with a typical URI assigning format.
+    /// This method assumes the format is like "mode=1,state=2,theme=dark"
+    /// </summary>
+    public static Dictionary<string, string> ParseAssignedValues(string inputString, string delimiter = ",")
+    {
+        Dictionary<string, string> parameters = new();
+
+        try
+        {
+            var parts = inputString.Split(delimiter, StringSplitOptions.RemoveEmptyEntries);
+            parameters = parts.Select(x => x.Split("=")).ToDictionary(x => x.First(), x => x.Last());
+        }
+        catch (Exception ex) { Debug.WriteLine($"[ERROR] ParseAssignedValues: {ex.Message}"); }
+
+        return parameters;
+    }
+
+
+    /// <summary>
+    /// IEnumerable file reader.
+    /// </summary>
+    public static IEnumerable<string> ReadFileLines(string path)
+    {
+        string? line = string.Empty;
+
+        if (!File.Exists(path))
+            yield return line;
+        else
+        {
+            using (TextReader reader = File.OpenText(path))
+            {
+                while ((line = reader.ReadLine()) != null)
+                {
+                    yield return line;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// IAsyncEnumerable file reader.
+    /// </summary>
+    public static async IAsyncEnumerable<string> ReadFileLinesAsync(string path)
+    {
+        string? line = string.Empty;
+
+        if (!File.Exists(path))
+            yield return line;
+        else
+        {
+            using (TextReader reader = File.OpenText(path))
+            {
+                while ((line = await reader.ReadLineAsync()) != null)
+                {
+                    yield return line;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// File writer for <see cref="IEnumerable{T}"/> parameters.
+    /// </summary>
+    public static bool WriteFileLines(string path, IEnumerable<string> lines)
+    {
+        using (TextWriter writer = File.CreateText(path))
+        {
+            foreach (var line in lines)
+            {
+                writer.WriteLine(line);
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// De-dupe file reader using a <see cref="HashSet{T}"/>.
+    /// </summary>
+    public static HashSet<string> ReadLines(string path)
+    {
+        if (!File.Exists(path))
+            return new();
+
+        return new HashSet<string>(File.ReadAllLines(path), StringComparer.InvariantCultureIgnoreCase);
+    }
+
+    /// <summary>
+    /// De-dupe file writer using a <see cref="HashSet{T}"/>.
+    /// </summary>
+    public static bool WriteLines(string path, IEnumerable<string> lines)
+    {
+        var output = new HashSet<string>(lines, StringComparer.InvariantCultureIgnoreCase);
+
+        using (TextWriter writer = File.CreateText(path))
+        {
+            foreach (var line in output)
+            {
+                writer.WriteLine(line);
+            }
+        }
+        return true;
+    }
+
+    public static T? DeserializeFromFile<T>(string filePath, ref string error)
+    {
+        try
+        {
+            string jsonString = System.IO.File.ReadAllText(filePath);
+            T? result = System.Text.Json.JsonSerializer.Deserialize<T>(jsonString);
+            error = string.Empty;
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ERROR] {nameof(DeserializeFromFile)}: {ex.Message}");
+            error = ex.Message;
+            return default;
+        }
+    }
+
+    public static bool SerializeToFile<T>(T obj, string filePath, ref string error)
+    {
+        if (obj == null || string.IsNullOrEmpty(filePath))
+            return false;
+
+        try
+        {
+            string jsonString = System.Text.Json.JsonSerializer.Serialize(obj);
+            System.IO.File.WriteAllText(filePath, jsonString);
+            error = string.Empty;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ERROR] {nameof(SerializeToFile)}: {ex.Message}");
+            error = ex.Message;
+            return false;
+        }
     }
 
     #region [Dispatcher Extensions]

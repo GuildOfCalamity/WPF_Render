@@ -25,6 +25,9 @@
 	  <None Remove="Assets\SuccessIcon.png" />
 	  <None Remove="Assets\UpIcon.png" />
 	  <None Remove="Assets\WarningIcon.png" />
+	  <None Remove="Assets\WaterIcon1.png" />
+	  <None Remove="Assets\WaterIcon2.png" />
+	  <None Remove="Assets\WaterIcon3.png" />
 	  <None Remove="Fonts\Aptos_regular.ttf" />
 	</ItemGroup>
 
@@ -48,6 +51,9 @@
 	  <Resource Include="Assets\SuccessIcon.png" />
 	  <Resource Include="Assets\UpIcon.png" />
 	  <Resource Include="Assets\WarningIcon.png" />
+	  <Resource Include="Assets\WaterIcon1.png" />
+	  <Resource Include="Assets\WaterIcon2.png" />
+	  <Resource Include="Assets\WaterIcon3.png" />
 	  <Resource Include="Fonts\Aptos_regular.ttf" />
 	</ItemGroup>
 

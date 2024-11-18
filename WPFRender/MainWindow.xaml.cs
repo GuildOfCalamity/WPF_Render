@@ -15,12 +15,17 @@ using System.Windows.Threading;
 namespace WPFRender;
 
 /// <summary>
-/// A simple game loop render demo using WPF.
-/// I'll demonstrate moving images and objects by adjusting their
-/// X and Y canvas positions, also by wiring up Storyboard animations.
+///  A simple game loop render demo using WPF.
+///  I'll demonstrate moving images and objects by adjusting their X and Y canvas positions.
+///  There are also Storyboard animation examples provided.
 /// </summary>
+/// <remarks>
+///  For more information you can reference drawing objects:
+///  https://learn.microsoft.com/en-us/dotnet/desktop/wpf/graphics-multimedia/drawing-objects-overview?view=netframeworkdesktop-4.8
+/// </remarks>
 public partial class MainWindow : Window, INotifyPropertyChanged
 {
+    #region [Members]
     static int _warmUp = 1; // allow cycles to pass until the window if fully rendered
     static double _maxWidth = 700;
     static double _maxHeight = 500;
@@ -29,11 +34,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     static bool _shutdown = false;
     static IntPtr winHnd = IntPtr.Zero;
     static ValueStopwatch _vsw = ValueStopwatch.StartNew();
+    
+    // This demo includes 5 different render types
     List<RectangleObject> _rects = new();
     List<ImageObject> _images = new();
+    List<ImageBrushObject> _brushes = new();
+    List<LineObject> _lines = new();
+    List<GeometryObject> _geos = new();
+    #endregion
 
     #region [Props]
     public ICommand CloseCommand { get; private set; }
+    public ICommand CycleCommand { get; private set; }
     public ILogger? Logger { get; private set; }
 
     bool _isBusy = false;
@@ -66,40 +78,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
-    bool _useGeometry= false;
-    public bool UseGeometry
-    {
-        get => _useGeometry;
-        set
-        {
-            _useGeometry = value;
-            OnPropertyChanged();
-            if (_useGeometry)
-            {
-                canvas.Children.Clear();
-                foreach (var rg in _rects)
-                {
-                    canvas.Children.Add(new Path()
-                    {
-                        Data = rg.Rectangle,
-                        Opacity = 0.8,
-                        StrokeThickness = 3,
-                        Stroke = Extensions.GetAppResource<Brush>("geometryGradient"),
-                        Fill = Extensions.GetAppResource<Brush>("animationGradient"),
-                    });
-                }
-            }
-            else
-            {
-                canvas.Children.Clear();
-                foreach (var img in _images)
-                {
-                    canvas.Children.Add(img.Image);
-                }
-            }
-        }
-    }
-
     PlayerDirection _direction = PlayerDirection.NONE;
     public PlayerDirection Direction
     {
@@ -108,6 +86,17 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
              _direction = value;
              OnPropertyChanged();
+        }
+    }
+
+    RenderType _renderType = RenderType.IMAGE;
+    public RenderType RenderType
+    {
+        get => _renderType;
+        set
+        {
+            _renderType = value;
+            OnPropertyChanged();
         }
     }
 
@@ -168,6 +157,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         InitializeComponent();
 
+        // NOTE: INotifyPropertyChanged will not work unless DataContext binding is set.
+        DataContext = this;
+
         this.ContentRendered += MainWindowOnContentRendered;
         this.Loaded += MainWindowOnLoaded;
         this.KeyDown += MainWindowOnKeyDown;
@@ -190,10 +182,87 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         // good substitute if you don't want to scaffold your own solution.
         //CompositionTarget.Rendering += OnCompositionRender;
 
-        // NOTE: INotifyPropertyChanged will not work unless DataContext binding is set.
-        DataContext = this;
-        
+        #region [ICommands]
         CloseCommand = new RelayCommand(() => this.Close());
+        CycleCommand = new RelayCommand(() =>
+        {
+            RenderType = RenderType.Next();
+            switch (RenderType)
+            {
+                case RenderType.SHAPE:
+                    {
+                        canvas.Children.Clear();
+                        foreach (var rg in _rects)
+                        {
+                            canvas.Children.Add(new Path()
+                            {
+                                Data = rg.Rectangle, // can contain any geometry
+                                Opacity = 0.8,
+                                StrokeThickness = 3,
+                                Stroke = Extensions.GetAppResource<Brush>("geometryGradient"),
+                                Fill = Extensions.GetAppResource<Brush>("animationGradient"),
+                            });
+                        }
+                    }
+                    break;
+
+                case RenderType.LINE:
+                    {
+                        canvas.Children.Clear();
+                        foreach (var lg in _lines)
+                        {
+                            canvas.Children.Add(new Path()
+                            {
+                                Data = lg.Line, // can contain any geometry
+                                Opacity = 0.8,
+                                StrokeThickness = 6,
+                                Stroke = Extensions.GetAppResource<Brush>("animationGradient")
+                            });
+                        }
+                    }
+                    break;
+
+                case RenderType.IMAGE:
+                    {
+                        canvas.Children.Clear();
+                        foreach (var img in _images)
+                        {
+                            canvas.Children.Add(img.Image);
+                        }
+                    }
+                    break;
+
+                case RenderType.BRUSH:
+                    {
+                        canvas.Children.Clear();
+                        foreach (var brsh in _brushes)
+                        {
+                            canvas.Children.Add(brsh.Rectangle);
+                        }
+                    }
+                    break;
+
+                case RenderType.DRAWING:
+                    {
+                        canvas.Children.Clear();
+                        foreach (var grp in _geos)
+                        {
+                            canvas.Children.Add(new Path()
+                            {
+                                Data = grp.Drawing?.Geometry, // can contain any geometry
+                                Opacity = 0.8,
+                                StrokeThickness = 4,
+                                Stroke = Extensions.GetAppResource<Brush>("animationGradient")
+                            });
+                        }
+                    }
+                    break;
+
+                default:
+                    break;
+            }
+        });
+        #endregion
 
         Logger = App.GetService<FileLogger>();
 
@@ -266,39 +335,107 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     ///</summary>
     void UpdateGameState()
     {
-        if (UseGeometry)
+        // You should just pick one of these for your game.
+        // I'll leaving all of them in the demo as examples of flexibility.
+        switch (RenderType)
         {
-            foreach (var rg in _rects)
-            {
-                // Update the object position.
-                rg.PosX += rg.SpeedX;
-                rg.PosY += rg.SpeedY;
+            case RenderType.LINE:
+                {
+                    foreach (var lg in _lines)
+                    {
+                        // Update the object position.
+                        lg.PosX += lg.SpeedX;
+                        lg.PosY += lg.SpeedY;
 
-                // Check object X boundary.
-                if (rg.PosX < _marginX || (rg.PosX + rg.Size) > (_maxWidth + Math.Abs(_marginX)))
-                    rg.SpeedX = -rg.SpeedX;
+                        // Check object X boundary.
+                        if (lg.PosX < _marginX || (lg.PosX + lg.Size) > (_maxWidth + Math.Abs(_marginX)))
+                            lg.SpeedX = -lg.SpeedX;
 
-                // Check object Y boundary.
-                if (rg.PosY < _marginY || (rg.PosY + rg.Size) > (_maxHeight + Math.Abs(_marginY)))
-                    rg.SpeedY = -rg.SpeedY;
-            }
-        }
-        else
-        {
-            foreach (var img in _images)
-            {
-                // Update the object position.
-                img.PosX += img.SpeedX;
-                img.PosY += img.SpeedY;
+                        // Check object Y boundary.
+                        if (lg.PosY < _marginY || (lg.PosY + lg.Size) > (_maxHeight + Math.Abs(_marginY)))
+                            lg.SpeedY = -lg.SpeedY;
+                    }
+                }
+                break;
 
-                // Check object X boundary.
-                if (img.PosX < _marginX || (img.PosX + img.Size) > (_maxWidth + Math.Abs(_marginX)))
-                    img.SpeedX = -img.SpeedX;
+            case RenderType.SHAPE:
+                {
+                    foreach (var rg in _rects)
+                    {
+                        // Update the object position.
+                        rg.PosX += rg.SpeedX;
+                        rg.PosY += rg.SpeedY;
 
-                // Check object Y boundary.
-                if (img.PosY < _marginY || (img.PosY + img.Size) > (_maxHeight + Math.Abs(_marginY)))
-                    img.SpeedY = -img.SpeedY;
-            }
+                        // Check object X boundary.
+                        if (rg.PosX < _marginX || (rg.PosX + rg.Size) > (_maxWidth + Math.Abs(_marginX)))
+                            rg.SpeedX = -rg.SpeedX;
+
+                        // Check object Y boundary.
+                        if (rg.PosY < _marginY || (rg.PosY + rg.Size) > (_maxHeight + Math.Abs(_marginY)))
+                            rg.SpeedY = -rg.SpeedY;
+                    }
+                }
+                break;
+
+            case RenderType.IMAGE:
+                {
+                    foreach (var img in _images)
+                    {
+                        // Update the object position.
+                        img.PosX += img.SpeedX;
+                        img.PosY += img.SpeedY;
+
+                        // Check object X boundary.
+                        if (img.PosX < _marginX || (img.PosX + img.Size) > (_maxWidth + Math.Abs(_marginX)))
+                            img.SpeedX = -img.SpeedX;
+
+                        // Check object Y boundary.
+                        if (img.PosY < _marginY || (img.PosY + img.Size) > (_maxHeight + Math.Abs(_marginY)))
+                            img.SpeedY = -img.SpeedY;
+                    }
+                }
+                break;
+
+            case RenderType.BRUSH:
+                {
+                    foreach (var brsh in _brushes)
+                    {
+                        // Update the object position.
+                        brsh.PosX += brsh.SpeedX;
+                        brsh.PosY += brsh.SpeedY;
+
+                        // Check object X boundary.
+                        if (brsh.PosX < _marginX || (brsh.PosX + brsh.Size) > (_maxWidth + Math.Abs(_marginX)))
+                            brsh.SpeedX = -brsh.SpeedX;
+
+                        // Check object Y boundary.
+                        if (brsh.PosY < _marginY || (brsh.PosY + brsh.Size) > (_maxHeight + Math.Abs(_marginY)))
+                            brsh.SpeedY = -brsh.SpeedY;
+                    }
+                }
+                break;
+
+            case RenderType.DRAWING:
+                {
+                    foreach (var gd in _geos)
+                    {
+                        // Update the object position.
+                        gd.PosX += gd.SpeedX;
+                        gd.PosY += gd.SpeedY;
+
+                        // Check object X boundary.
+                        if (gd.PosX < _marginX || (gd.PosX + gd.Size) > (_maxWidth + Math.Abs(_marginX)))
+                            gd.SpeedX = -gd.SpeedX;
+
+                        // Check object Y boundary.
+                        if (gd.PosY < _marginY || (gd.PosY + gd.Size) > (_maxHeight + Math.Abs(_marginY)))
+                            gd.SpeedY = -gd.SpeedY;
+                    }
+                }
+                break;
+
+            default:
+                break;
         }
     }
 
@@ -309,28 +446,101 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         this.Dispatcher?.Invoke(() =>
         {
-            if (UseGeometry)
+            // You should just pick one of these for your game.
+            // I'll leaving all of them in the demo as examples of flexibility.
+            switch (RenderType)
             {
-                foreach (var rg in _rects)
-                {
-                    if (rg.Rectangle != null)
-                        rg.Rectangle.Rect = new Rect(rg.PosX, rg.PosY, rg.Size, rg.Size);
-                }
-            }
-            else
-            {
-                foreach (var img in _images)
-                {
-                    if (img.Image != null)
+                case RenderType.LINE:
                     {
-                        // You can move the image by setting its dependency object in the canvas:
-                        Canvas.SetLeft(img.Image, img.PosX);
-                        Canvas.SetTop(img.Image, img.PosY);
-                        
-                        // ...or, you can move the image by adjusting the object's margin:
-                        //img.Image.Margin = new Thickness(img.PosX, img.PosY, 0, 0);
+                        foreach (var lg in _lines)
+                        {
+                            if (lg.Line != null)
+                            {
+                                // You can move geometry objects by setting their Point data:
+                                lg.Line.StartPoint = new Point(lg.PosX, lg.PosY);
+                                //lg.Line.EndPoint = new Point(lg.PosX + lg.Size, lg.PosY + lg.Size);
+                                lg.Line.EndPoint = new Point(lg.PosX + lg.Size, lg.PosX / 2);
+                            }
+                        }
                     }
-                }
+                    break;
+
+                case RenderType.SHAPE:
+                    {
+                        foreach (var rg in _rects)
+                        {
+                            if (rg.Rectangle != null)
+                            {
+                                // You can move geometry objects by setting their Point data:
+                                rg.Rectangle.Rect = new Rect(rg.PosX, rg.PosY, rg.Size, rg.Size);
+                            }
+                        }
+                    }
+                    break;
+
+                case RenderType.IMAGE:
+                    {
+                        foreach (var img in _images)
+                        {
+                            if (img.Image != null)
+                            {
+                                // You can move images by setting their dependency object in the canvas:
+                                Canvas.SetLeft(img.Image, img.PosX);
+                                Canvas.SetTop(img.Image, img.PosY);
+                        
+                                // ...or, you can move them by adjusting the object's margin:
+                                //img.Image.Margin = new Thickness(img.PosX, img.PosY, 0, 0);
+                            }
+                        }
+                    }
+                    break;
+
+                case RenderType.BRUSH:
+                    {
+                        foreach (var brsh in _brushes)
+                        {
+                            if (brsh.Rectangle != null)
+                            {
+                                // You can move brushes by setting their dependency object in the canvas:
+                                Canvas.SetLeft(brsh.Rectangle, brsh.PosX);
+                                Canvas.SetTop(brsh.Rectangle, brsh.PosY);
+
+                                // ...or, you can move them by adjusting the object's margin:
+                                //img.Image.Margin = new Thickness(img.PosX, img.PosY, 0, 0);
+                            }
+                        }
+                    }
+                    break;
+
+                case RenderType.DRAWING:
+                    {
+                        canvas.Children.Clear();
+                        foreach (var gd in _geos)
+                        {
+                            if (gd.Drawing != null)
+                            {
+                                GeometryGroup ellipses = new GeometryGroup();
+                                ellipses.Children.Add(new EllipseGeometry(new Point(gd.PosX, gd.PosY), gd.Size * 2, gd.Size));
+                                ellipses.Children.Add(new EllipseGeometry(new Point(gd.PosX, gd.PosY), gd.Size, gd.Size * 2));
+                                GeometryDrawing drawing = new GeometryDrawing();
+                                drawing.Geometry = ellipses;
+                                drawing.Brush = new LinearGradientBrush(Colors.Blue, Color.FromRgb(204, 204, 255), new Point(0, 0), new Point(1, 1));
+                                drawing.Pen = new Pen(Brushes.Navy, 10);
+                                gd.Drawing = drawing;
+                                canvas.Children.Add(new Path()
+                                {
+                                    Data = gd.Drawing.Geometry, // can contain any geometry
+                                    Opacity = 0.8,
+                                    StrokeThickness = 4,
+                                    Stroke = Extensions.GetAppResource<Brush>("animationGradient")
+                                });
+                            }
+                        }
+                    }
+                    break;
+
+                default:
+                    break;
             }
 
         }, DispatcherPriority.Render);
@@ -406,7 +616,37 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 Rectangle = new RectangleGeometry(new Rect(X, Y, size, size), 6, 6),
             });
         }
-        
+
+        /** Instantiate Lines **/
+        for (int i = 1; i < ObjectCount; i++)
+        {
+            var X = Random.Shared.Next(10, (int)_maxWidth - 80 > 0 ? (int)_maxWidth - 80 : 400);
+            var Y = Random.Shared.Next(10, (int)_maxHeight - 80 > 0 ? (int)_maxHeight - 80 : 400);
+            var size = Random.Shared.Next(11, 82);
+
+            //LineGeometry lineGeometry = new LineGeometry
+            //{
+            //    StartPoint = new Point(X, Y),
+            //    EndPoint = new Point(X + size, Y + size)
+            //};
+            //Path linePath = new Path
+            //{
+            //    Stroke = Extensions.GenerateRandomBrush(), // Set random brush for the stroke
+            //    StrokeThickness = 3,
+            //    Data = lineGeometry
+            //};
+
+            _lines.Add(new LineObject
+            {
+                Size = size,
+                PosX = X,
+                PosY = Y,
+                SpeedX = RandSpeed(),
+                SpeedY = RandSpeed(), 
+                Line = new LineGeometry(new Point(X, Y), new Point(X + size, Y + size)),
+            });
+        }
+
         /** Instantiate Sprites **/
         for (int i = 1; i < ObjectCount; i++)
         {
@@ -417,17 +657,21 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             var bi = new BitmapImage();
             /** You can use the begin/end init to change the image during run-time **/
             bi.BeginInit();
-            if (i % 2 == 0)
-                bi.UriSource = new Uri("Assets/FireIcon2.png", UriKind.Relative);
-            else
-                bi.UriSource = new Uri("Assets/FireIcon3.png", UriKind.Relative);
+            var pick = Random.Shared.Next(4);
+            switch (pick)
+            {
+                case 0: bi.UriSource = new Uri("Assets/FireIcon2.png", UriKind.Relative);  break;
+                case 1: bi.UriSource = new Uri("Assets/FireIcon3.png", UriKind.Relative);  break;
+                case 2: bi.UriSource = new Uri("Assets/WaterIcon2.png", UriKind.Relative); break;
+                case 3: bi.UriSource = new Uri("Assets/WaterIcon3.png", UriKind.Relative); break;
+            }
             bi.EndInit();
             img.Source = bi;
             img.VerticalAlignment = VerticalAlignment.Center;
             img.HorizontalAlignment = HorizontalAlignment.Center;
             img.Width = img.Height = size;
             
-            // You can adjust this as you see fit, "BitmapScalingMode.Fant" works best for scaling tiny images.
+            // You can adjust this as you see fit, "BitmapScalingMode.Fant" works best for scaling tiny images but is more costly.
             RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.Linear);
         
             _images.Add(new ImageObject
@@ -440,31 +684,85 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 Image = img,
             });
         
+        
+        }
+
+        /** Instantiate ImageBrushes **/
+        for (int i = 1; i < ObjectCount; i++)
+        {
+            var X = Random.Shared.Next(20, (int)_maxWidth - 80 > 0 ? (int)_maxWidth - 80 : 400);
+            var Y = Random.Shared.Next(20, (int)_maxHeight - 80 > 0 ? (int)_maxHeight - 80 : 400);
+            var size = Random.Shared.Next(41, 80);
+            
             /** You can also apply the BitmapImage to an ImageBrush **/
             //var ib = new ImageBrush(new BitmapImage(new Uri(@"pack://application:,,,/Assets/AppLogo.png")));
             //button.Background = ib;
-        
+
+            ImageBrush imageBrush = new ImageBrush 
+            { 
+                ImageSource = "pack://application:,,,/Assets/FireIcon2.png".ReturnImageSource(), 
+                Stretch = Stretch.UniformToFill,
+                Opacity = 0.7,
+            };
+
+            Rectangle rect = new Rectangle
+            {
+                Width = size, Height = size,
+                RadiusX = 6, RadiusY = 6,
+                Fill = imageBrush, 
+            };
+
+            _brushes.Add(new ImageBrushObject
+            {
+                Size = size,
+                PosX = X, PosY = Y,
+                SpeedX = RandSpeed(),
+                SpeedY = RandSpeed(),
+                Rectangle = rect,
+            });
         }
+
+        /** Instantiate GeometryDrawing **/
+        for (int i = 1; i < ObjectCount; i++)
+        {
+            var X = Random.Shared.Next(20, (int)_maxWidth - 50 > 0 ? (int)_maxWidth - 50 : 400);
+            var Y = Random.Shared.Next(20, (int)_maxHeight - 50 > 0 ? (int)_maxHeight - 50 : 400);
+            var size = Random.Shared.Next(21, 40);
+            GeometryGroup ellipses = new GeometryGroup();
+            ellipses.Children.Add(new EllipseGeometry(new Point(X, Y), size * 2, size));
+            ellipses.Children.Add(new EllipseGeometry(new Point(X, Y), size, size * 2));
+            GeometryDrawing drawing = new GeometryDrawing();
+            drawing.Geometry = ellipses;
+            drawing.Brush = new LinearGradientBrush(Colors.Blue, Color.FromRgb(204, 204, 255), new Point(0, 0), new Point(1, 1));
+            drawing.Pen = new Pen(Brushes.Navy, 10);
+            _geos.Add(new GeometryObject
+            {
+                Size = size,
+                PosX = X,
+                PosY = Y,
+                SpeedX = RandSpeed(),
+                SpeedY = RandSpeed(),
+                Drawing = drawing,
+            });
+        }
+
+        /** ImageDrawing Example **/
+        //var X = Random.Shared.Next(20, (int)_maxWidth - 50 > 0 ? (int)_maxWidth - 50 : 400);
+        //var Y = Random.Shared.Next(20, (int)_maxHeight - 50 > 0 ? (int)_maxHeight - 50 : 400);
+        //var size = Random.Shared.Next(21, 40);
+        //ImageDrawing idSample = new ImageDrawing();
+        //idSample.Rect = new Rect(X, Y, size, size);
+        //idSample.ImageSource = new BitmapImage(new Uri(@"Assets\AppIcon.png", UriKind.Relative));
         #endregion
-
-        //for (int i = 1; i < ObjectCount; i++)
-        //{
-        //    var x1 = Random.Shared.Next(100, (int)_maxWidth - 100);
-        //    var y1 = Random.Shared.Next(100, (int)_maxWidth - 100);
-        //    var x2 = Random.Shared.Next(100, (int)_maxWidth - 100);
-        //    var y2 = Random.Shared.Next(100, (int)_maxWidth - 100);
-        //    AddAnimatedLineGeometry(canvas, new Point(x1, y1), new Point(x2, y2), 2);
-        //}
-
-        // Example image source
-        //ImageSource? imageSource = new ImageSourceConverter().ConvertFromString("AppIcon.png") as ImageSource;
-        ImageSource? imageSource = "pack://application:,,,/Assets/AppIcon.png".ReturnImageSource();
-        AddAnimatedImageBrush(canvas, new Rect(20, 20, 50, 50), new Rect(300, 300, 250, 250), 2, imageSource);
 
         Task.Run(async () =>
         {
             await Task.Delay(2000);
-            this.Dispatcher?.Invoke(() => { UseGeometry = IsBusy = false; });
+            this.Dispatcher?.Invoke(() => 
+            { 
+                IsBusy = false;
+                CycleCommand.Execute(null);
+            });
         });
     }
 
@@ -504,6 +802,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         // Create animations for X and Y position of the Rectangle
         DoubleAnimation leftAnimation = new DoubleAnimation
         {
+            AutoReverse = true,
             From = startRect.X,
             To = endRect.X,
             Duration = TimeSpan.FromSeconds(durationSeconds)
@@ -511,20 +810,22 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         DoubleAnimation topAnimation = new DoubleAnimation
         {
+            AutoReverse = true,
             From = startRect.Y,
             To = endRect.Y,
             Duration = TimeSpan.FromSeconds(durationSeconds)
         };
 
-        // Apply animations to the Rectangle
+        // Start the animations
         rect.BeginAnimation(Canvas.LeftProperty, leftAnimation);
         rect.BeginAnimation(Canvas.TopProperty, topAnimation);
 
-        // Optionally animate the Width and Height
+        // Animate the Width and Height if they are different
         if (startRect.Width != endRect.Width || startRect.Height != endRect.Height)
         {
             DoubleAnimation widthAnimation = new DoubleAnimation
             {
+                AutoReverse = true,
                 From = startRect.Width,
                 To = endRect.Width,
                 Duration = TimeSpan.FromSeconds(durationSeconds)
@@ -532,11 +833,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
             DoubleAnimation heightAnimation = new DoubleAnimation
             {
+                AutoReverse = true,
                 From = startRect.Height,
                 To = endRect.Height,
                 Duration = TimeSpan.FromSeconds(durationSeconds)
             };
-
             rect.BeginAnimation(Rectangle.WidthProperty, widthAnimation);
             rect.BeginAnimation(Rectangle.HeightProperty, heightAnimation);
         }
