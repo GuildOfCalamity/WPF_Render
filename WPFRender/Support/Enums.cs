@@ -8,6 +8,7 @@ public enum RenderType
     BRUSH = 2,
     LINE = 3,
     DRAWING = 4,
+    TRANSFORM = 5,
 }
 
 public enum PlayerDirection

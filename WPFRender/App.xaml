@@ -576,7 +576,7 @@
         <ControlTemplate x:Key="ReformedButton" TargetType="{x:Type Button}">
             <Border
                 x:Name="Border"
-                MinHeight="20"
+                MinHeight="30"
                 Margin="{TemplateBinding Margin}"
                 Padding="{TemplateBinding Padding}"
                 Background="{StaticResource NormalDarkBrush}"

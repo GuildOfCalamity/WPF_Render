@@ -362,18 +362,15 @@ public static class Extensions
                     Text = msg
                 };
 
-                var bbkgnd = GetAppResource<Brush>("backgroundGradient");
+                var bbkgnd = GetAppResource<Brush>("backgroundGradient") ?? GenerateRandomBrush();
 
                 // Button setup
                 var btn = new Button()
                 {
-                    Width = 170,
-                    Height = 38,
+                    MinWidth = 180,
+                    MinHeight = 45,
                     Content = "Close",
-                    FontSize = 20,
-                    Template = GetAppResource<ControlTemplate>("CloseButton"),
-                    FontWeight = FontWeights.Regular,
-                    Foreground = new SolidColorBrush(Color.FromRgb(180, 180, 180)),
+                    Template = GetAppResource<ControlTemplate>("ReformedButton"),
                     Margin = new Thickness(10, addIcon ? 15 : 30, 10, 2),
                     VerticalAlignment = VerticalAlignment.Bottom,
                     VerticalContentAlignment = VerticalAlignment.Center,
@@ -742,7 +739,7 @@ public static class Extensions
     /// And if you wanted to get a brush resource you'd use:
     ///    ItemTemplate = Extensions.Get<DataTemplate>("MyDataTemplate");
     /// </summary>
-    public static T GetAppResource<T>(string resourceName) where T : class
+    public static T? GetAppResource<T>(string resourceName) where T : class
     {
         return System.Windows.Application.Current.TryFindResource(resourceName) as T;
     }

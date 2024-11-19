@@ -45,6 +45,14 @@ public class ImageBrushObject : RenderObject
 }
 
 /// <summary>
+/// Similar to the <see cref="ImageObject"/>, but this class wraps a <see cref="DrawingGroup"/> inside a <see cref="TranslateTransform"/>.
+/// </summary>
+public class TransformObject : RenderObject
+{
+    public Image? WrappedImage { get; set; }
+}
+
+/// <summary>
 /// https://learn.microsoft.com/en-us/dotnet/desktop/wpf/graphics-multimedia/path-markup-syntax?view=netframeworkdesktop-4.8
 /// </summary>
 public class PathObject : RenderObject

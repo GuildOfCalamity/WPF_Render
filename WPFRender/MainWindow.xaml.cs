@@ -17,7 +17,8 @@ namespace WPFRender;
 /// <summary>
 ///  A simple game loop render demo using WPF.
 ///  I'll demonstrate moving images and objects by adjusting their X and Y canvas positions.
-///  There are also Storyboard animation examples provided.
+///  There are also storyboard animation examples provided. You could use a combination of 
+///  loop position updates and storyboards to create your own animations.
 /// </summary>
 /// <remarks>
 ///  For more information you can reference drawing objects:
@@ -35,12 +36,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     static IntPtr winHnd = IntPtr.Zero;
     static ValueStopwatch _vsw = ValueStopwatch.StartNew();
     
-    // This demo includes 5 different render types
+    // This demo includes 5 different render types (TransformObject is similar to ImageObject)
     List<RectangleObject> _rects = new();
     List<ImageObject> _images = new();
     List<ImageBrushObject> _brushes = new();
     List<LineObject> _lines = new();
-    List<GeometryObject> _geos = new();
+    List<TransformObject> _geos = new();
+    List<TransformObject> _trans = new();
     #endregion
 
     #region [Props]
@@ -115,7 +117,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
 
     string _statusText = string.Empty;
-
     public string StatusText
     {
         get => _statusText;
@@ -149,7 +150,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     #endregion
 
     /// <summary>
-    /// Primary constructor
+    ///  Primary constructor
     /// </summary>
     public MainWindow()
     {
@@ -158,6 +159,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         InitializeComponent();
 
         // NOTE: INotifyPropertyChanged will not work unless DataContext binding is set.
+        // This demo is simplistic, but eventually you may want to add your own ViewModel. 
         DataContext = this;
 
         this.ContentRendered += MainWindowOnContentRendered;
@@ -199,8 +201,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                                 Data = rg.Rectangle, // can contain any geometry
                                 Opacity = 0.8,
                                 StrokeThickness = 3,
-                                Stroke = Extensions.GetAppResource<Brush>("geometryGradient"),
-                                Fill = Extensions.GetAppResource<Brush>("animationGradient"),
+                                Stroke = Extensions.GetAppResource<Brush>("geometryGradient") ?? Extensions.GenerateRandomBrush(),
+                                Fill = Extensions.GetAppResource<Brush>("animationGradient") ?? Extensions.GenerateRandomBrush(),
                             });
                         }
                     }
@@ -216,7 +218,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                                 Data = lg.Line, // can contain any geometry
                                 Opacity = 0.8,
                                 StrokeThickness = 6,
-                                Stroke = Extensions.GetAppResource<Brush>("animationGradient")
+                                Stroke = Extensions.GetAppResource<Brush>("animationGradient") ?? Extensions.GenerateRandomBrush()
                             });
                         }
                     }
@@ -245,20 +247,30 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 case RenderType.DRAWING:
                     {
                         canvas.Children.Clear();
-                        foreach (var grp in _geos)
+                        foreach (var g in _geos)
                         {
-                            canvas.Children.Add(new Path()
-                            {
-                                Data = grp.Drawing?.Geometry, // can contain any geometry
-                                Opacity = 0.8,
-                                StrokeThickness = 4,
-                                Stroke = Extensions.GetAppResource<Brush>("animationGradient")
-                            });
+                            canvas.Children.Add(g.WrappedImage);
+                        }
+                    }
+                    break;
+
+                case RenderType.TRANSFORM:
+                    {
+                        canvas.Children.Clear();
+                        foreach (var tr in _trans)
+                        {
+                            canvas.Children.Add(tr.WrappedImage);
                         }
                     }
                     break;
 
                 default:
+                    Extensions.ShowDialogThreadSafe(
+                        $"{Environment.NewLine}The render type '{RenderType}' is not defined.{Environment.NewLine}{Environment.NewLine}You will need to apply logic for this case.", 
+                        "Cycle Command", 
+                        false, 
+                        true, 
+                        true);
                     break;
             }
         });
@@ -331,7 +343,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
 
     ///<summary>
-    /// Code to update game properties here.
+    ///  Code to update game properties here.
     ///</summary>
     void UpdateGameState()
     {
@@ -433,6 +445,25 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     }
                 }
                 break;
+            
+            case RenderType.TRANSFORM:
+                {
+                    foreach (var tr in _trans)
+                    {
+                        // Update the object position.
+                        tr.PosX += tr.SpeedX;
+                        tr.PosY += tr.SpeedY;
+
+                        // Check object X boundary.
+                        if (tr.PosX < _marginX || (tr.PosX + tr.Size) > (_maxWidth + Math.Abs(_marginX)))
+                            tr.SpeedX = -tr.SpeedX;
+
+                        // Check object Y boundary.
+                        if (tr.PosY < _marginY || (tr.PosY + tr.Size) > (_maxHeight + Math.Abs(_marginY)))
+                            tr.SpeedY = -tr.SpeedY;
+                    }
+                }
+                break;
 
             default:
                 break;
@@ -440,7 +471,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
 
     ///<summary>
-    /// Code to update screen objects here.
+    ///  Code to update screen objects here.
     ///</summary>
     void RepaintWindow()
     {
@@ -514,26 +545,25 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
                 case RenderType.DRAWING:
                     {
-                        canvas.Children.Clear();
                         foreach (var gd in _geos)
                         {
-                            if (gd.Drawing != null)
+                            if (gd.WrappedImage != null)
                             {
-                                GeometryGroup ellipses = new GeometryGroup();
-                                ellipses.Children.Add(new EllipseGeometry(new Point(gd.PosX, gd.PosY), gd.Size * 2, gd.Size));
-                                ellipses.Children.Add(new EllipseGeometry(new Point(gd.PosX, gd.PosY), gd.Size, gd.Size * 2));
-                                GeometryDrawing drawing = new GeometryDrawing();
-                                drawing.Geometry = ellipses;
-                                drawing.Brush = new LinearGradientBrush(Colors.Blue, Color.FromRgb(204, 204, 255), new Point(0, 0), new Point(1, 1));
-                                drawing.Pen = new Pen(Brushes.Navy, 10);
-                                gd.Drawing = drawing;
-                                canvas.Children.Add(new Path()
-                                {
-                                    Data = gd.Drawing.Geometry, // can contain any geometry
-                                    Opacity = 0.8,
-                                    StrokeThickness = 4,
-                                    Stroke = Extensions.GetAppResource<Brush>("animationGradient")
-                                });
+                                Canvas.SetLeft(gd.WrappedImage, gd.PosX);
+                                Canvas.SetTop(gd.WrappedImage, gd.PosY);
+                            }
+                        }
+                    }
+                    break;
+
+                case RenderType.TRANSFORM:
+                    {
+                        foreach (var tr in _trans)
+                        {
+                            if (tr.WrappedImage != null)
+                            {
+                                Canvas.SetLeft(tr.WrappedImage, tr.PosX);
+                                Canvas.SetTop(tr.WrappedImage, tr.PosY);
                             }
                         }
                     }
@@ -549,8 +579,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     #region [Control Events] 
     /// <summary>
-    /// Typically this is the first event once the <see cref="Window"/> is shown.
-    /// You can use this to load configs or map data for the game.
+    ///  Typically this is the first event once the <see cref="Window"/> is shown.
+    ///  You can use this to load configs or map data for the game.
     /// </summary>
     void MainWindowOnContentRendered(object? sender, EventArgs e) => IsBusy = true;
 
@@ -599,6 +629,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         StatusImage = "pack://application:,,,/Assets/AppIcon.png".ReturnImageSource();
 
         #region [Create the RenderObjects]
+        
+        var brush = Extensions.GetAppResource<Brush>("animationGradient") ?? Extensions.GenerateRandomBrush();
 
         /** Instantiate Shapes **/
         for (int i = 1; i < ObjectCount; i++)
@@ -722,12 +754,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             });
         }
 
-        /** Instantiate GeometryDrawing **/
+        /** Instantiate GeometryDrawings **/
         for (int i = 1; i < ObjectCount; i++)
         {
-            var X = Random.Shared.Next(20, (int)_maxWidth - 50 > 0 ? (int)_maxWidth - 50 : 400);
-            var Y = Random.Shared.Next(20, (int)_maxHeight - 50 > 0 ? (int)_maxHeight - 50 : 400);
-            var size = Random.Shared.Next(21, 40);
+            var X = Random.Shared.Next(20, (int)_maxWidth - 80 > 0 ? (int)_maxWidth - 80 : 400);
+            var Y = Random.Shared.Next(20, (int)_maxHeight - 80 > 0 ? (int)_maxHeight - 80 : 400);
+            var size = Random.Shared.Next(21, 80);
             GeometryGroup ellipses = new GeometryGroup();
             ellipses.Children.Add(new EllipseGeometry(new Point(X, Y), size * 2, size));
             ellipses.Children.Add(new EllipseGeometry(new Point(X, Y), size, size * 2));
@@ -735,14 +767,57 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             drawing.Geometry = ellipses;
             drawing.Brush = new LinearGradientBrush(Colors.Blue, Color.FromRgb(204, 204, 255), new Point(0, 0), new Point(1, 1));
             drawing.Pen = new Pen(Brushes.Navy, 10);
-            _geos.Add(new GeometryObject
+            var transform = new TranslateTransform(size, size);
+            var drawingGroup = new DrawingGroup
+            {
+                Children = { drawing },
+                Transform = transform
+            };
+            // To use the geometry drawing group on the canvas we'll need to create a DrawingImage.
+            DrawingImage drawingImage = new DrawingImage(drawingGroup);
+            // An Image is a FrameworkElement, which inherits from UIElement, so it can be added/moved on a Canvas.
+            Image image = new Image { Source = drawingImage, Width = size, Height = size, Opacity = 0.8 };
+            _trans.Add(new TransformObject
             {
                 Size = size,
                 PosX = X,
                 PosY = Y,
                 SpeedX = RandSpeed(),
                 SpeedY = RandSpeed(),
-                Drawing = drawing,
+                WrappedImage = image,
+            });
+        }
+
+        /** Instantiate GeometryTransforms **/
+        for (int i = 1; i < ObjectCount; i++)
+        {
+            var X = Random.Shared.Next(20, (int)_maxWidth - 100 > 0 ? (int)_maxWidth - 100 : 400);
+            var Y = Random.Shared.Next(20, (int)_maxHeight - 100 > 0 ? (int)_maxHeight - 100 : 400);
+            var radius = Random.Shared.Next(31, 101);
+            GeometryDrawing geometryDrawing = new GeometryDrawing
+            {
+                Brush = brush,
+                Geometry = new EllipseGeometry(new Point(X, Y), radius, radius)
+            };
+            // https://learn.microsoft.com/en-us/dotnet/api/system.windows.media.translatetransform?view=windowsdesktop-8.0
+            var transform = new TranslateTransform(radius, radius);
+            var drawingGroup = new DrawingGroup
+            {
+                Children = { geometryDrawing },
+                Transform = transform
+            };
+            // To use the geometry drawing group on the canvas we'll need to create a DrawingImage.
+            DrawingImage drawingImage = new DrawingImage(drawingGroup);
+            // An Image is a FrameworkElement, which inherits from UIElement, so it can be added/moved on a Canvas.
+            Image image = new Image { Source = drawingImage, Width = radius, Height = radius, Opacity = 0.8 };
+            _geos.Add(new TransformObject
+            {
+                Size = radius,
+                PosX = X,
+                PosY = Y,
+                SpeedX = RandSpeed(),
+                SpeedY = RandSpeed(),
+                WrappedImage = image,
             });
         }
 
@@ -781,7 +856,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     #region [Extras]
     /// <summary>
-    /// Creates a <see cref="ImageBrush"/> and animates it.
+    ///  Creates a <see cref="ImageBrush"/> and animates it.
     /// </summary>
     void AddAnimatedImageBrush(Canvas canvas, Rect startRect, Rect endRect, double durationSeconds, ImageSource imageSource)
     {
@@ -844,7 +919,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
 
     /// <summary>
-    /// Creates a <see cref="LineGeometry"/> and animates it.
+    ///  Creates a <see cref="LineGeometry"/> and animates it.
     /// </summary>
     void AddAnimatedLineGeometry(Canvas canvas, Point startPoint, Point endPoint, double durationSeconds)
     {
@@ -905,12 +980,33 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     /// </summary>
     void OnCompositionRender(object? sender, EventArgs e)
     {
-        //Debug.WriteLine($"[INFO] CompositionRenderEvent at {DateTime.Now.ToString("hh:mm:ss.fff tt")}");
+        // We're using our own render loop.
+    }
+
+    /// <summary>
+    ///  The higher the <paramref name="factor"/> the slower the speed.
+    /// </summary>
+    double RandSpeed(double factor = 100) => Random.Shared.Next(1, 100) / factor;
+
+    /// <summary>
+    ///  Randomly returns true or false.
+    /// </summary>
+    bool RandBool() => Random.Shared.Next(1, 3) == 2 ? true : false;
+
+    /// <summary>
+    ///  Simple logger method for debugging.
+    /// </summary>
+    void Log(Exception ex, bool logToDisk = false)
+    {
+        if (logToDisk)
+            Logger?.WriteLine($"{ex.GetType()}: {ex.Message}", LogLevel.Warning);
+
+        Task.Run(() => { Extensions.ShowDialogThreadSafe($"{ex.ToLogString()}", "Task Result", true, true, true); });
     }
 
     /// <summary>
     ///  Background thread to animate the <see cref="System.Windows.Controls.ProgressBar"/>.
-    ///  Could be used for health bars, et. al.
+    ///  Could be used for health bars, loading progress, etc.
     /// </summary>
     void RunProgressBar(int maxCount = 100, int incAmnt = 15)
     {
@@ -932,27 +1028,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             }
             catch (Exception) { /* possible object disposed */ }
         });
-    }
-
-    /// <summary>
-    /// The higher the <paramref name="factor"/> the slower the speed.
-    /// </summary>
-    double RandSpeed(double factor = 100) => Random.Shared.Next(1, 100) / factor;
-
-    /// <summary>
-    /// Randomly returns true or false.
-    /// </summary>
-    bool RandBool() => Random.Shared.Next(1, 3) == 2 ? true : false;
-
-    /// <summary>
-    ///  Simple logger method for debugging.
-    /// </summary>
-    void Log(Exception ex, bool logToDisk = false)
-    {
-        if (logToDisk)
-            Logger?.WriteLine($"{ex.GetType()}: {ex.Message}", LogLevel.Warning);
-
-        Task.Run(() => { Extensions.ShowDialogThreadSafe($"{ex.ToLogString()}", "Task Result", true, true, true); });
     }
 
     /// <summary>

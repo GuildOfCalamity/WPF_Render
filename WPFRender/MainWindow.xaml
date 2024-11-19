@@ -46,13 +46,15 @@
                 HorizontalAlignment="Center"
                 Command="{Binding CycleCommand}"
                 Content="Cycle"
+                IsEnabled="{Binding IsBusy, Converter={StaticResource boolToReverse}}"
                 Template="{StaticResource ReformedButton}"
                 ToolTip="Click this button to change the render object type." />
 
             <ctrl:DotAnimationControl
                 Grid.Row="0"
-                Grid.Column="1"
-                HorizontalAlignment="Center"
+                Grid.Column="0"
+                Margin="6,5,0,0"
+                HorizontalAlignment="Left"
                 VerticalAlignment="Center"
                 DotSize="20"
                 DotSpacing="11"
