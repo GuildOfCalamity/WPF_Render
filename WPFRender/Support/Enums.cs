@@ -9,6 +9,7 @@ public enum RenderType
     LINE = 3,
     DRAWING = 4,
     TRANSFORM = 5,
+    ROTATE = 6,
 }
 
 public enum PlayerDirection

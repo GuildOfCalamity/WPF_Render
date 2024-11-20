@@ -15,11 +15,19 @@ public partial class App : Application
     /// <summary>
     /// Any outside calling threads must use the <see cref="App.SyncContext"/>
     /// or the <see cref="App.UiContext"/> when updating notifiable properties 
-    /// from inside the view models.
+    /// from inside any view models.
     /// </summary>
     public static TaskScheduler? SyncContext { get; private set; }
     public static SynchronizationContext? UiContext { get; private set; }
     public static Dispatcher? MainDispatcher { get; private set; }
+
+    /// <summary>
+    /// Entry point into the application.
+    /// </summary>
+    public App()
+    {
+        Debug.WriteLine($"[INFO] {MethodBase.GetCurrentMethod()?.DeclaringType?.Name}__{MethodBase.GetCurrentMethod()?.Name}");
+    }
 
     protected override void OnStartup(StartupEventArgs e)
     {

@@ -53,6 +53,17 @@ public class TransformObject : RenderObject
 }
 
 /// <summary>
+/// Similar to the <see cref="TransformObject"/>, but this class wraps a <see cref="DrawingGroup"/> inside a <see cref="TranslateTransform"/>.
+/// </summary>
+public class RotateObject : RenderObject
+{
+    public bool Clockwise { get; set; }
+    public int Degrees { get; set; }
+    public DrawingGroup? Group { get; set; }
+    public Image? WrappedImage { get; set; }
+}
+
+/// <summary>
 /// https://learn.microsoft.com/en-us/dotnet/desktop/wpf/graphics-multimedia/path-markup-syntax?view=netframeworkdesktop-4.8
 /// </summary>
 public class PathObject : RenderObject
@@ -75,5 +86,6 @@ public class RenderObject
     public double PosY { get; set; }
     public double SpeedX { get; set; }
     public double SpeedY { get; set; }
-    public double Size { get; set; }
+    public double SizeX { get; set; }
+    public double SizeY { get; set; }
 }

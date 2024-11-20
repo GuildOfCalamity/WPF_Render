@@ -243,18 +243,13 @@ public static class Extensions
             if (string.IsNullOrEmpty(Thread.CurrentThread.Name))
                 Thread.CurrentThread.Name = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
 
-            // Write Main Assembly
             System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
             System.Reflection.AssemblyName main = assembly.GetName();
             result.Add($"Main Assembly: {main.Name}, Version: {main.Version}");
-
             if (!mainOnly)
             {
-                // Get referenced assemblies
                 List<string> assemblyGeneric = new List<string>();
-                GetAssemblies(assembly, assemblyGeneric);
-
-                // Sort Array
+                GetAssemblies(assembly, ref assemblyGeneric);
                 string[] assemList = assemblyGeneric.ToArray();
                 if (assemList.Count() > 0)
                 {
@@ -270,29 +265,32 @@ public static class Extensions
         catch (Exception) { }
         return result;
     }
-    static void GetAssemblies(System.Reflection.Assembly main, List<string> assemblyGeneric)
+    static void GetAssemblies(System.Reflection.Assembly main, ref List<string> assemblyGeneric, bool ignoreMicrosoft = false)
     {
-        System.Reflection.AssemblyName[] names = main.GetReferencedAssemblies()
-                // Ignore standard Microsoft libs
-                .Where(p => !p.Name.ToLower().StartsWith("system") &&
-                                      !p.Name.ToLower().StartsWith("microsoft") &&
-                                      !p.Name.ToLower().StartsWith("mscorlib") &&
-                                      !p.Name.ToLower().StartsWith("presentation") &&
-                                      !p.Name.ToLower().StartsWith("windows"))
-                .ToArray();
-
-        foreach (var a in names)
+        try
         {
-            assemblyGeneric.Add(String.Format("Assembly: {0}, Version: {1}", a.Name, a.Version));
-            try
-            {   // Recursive
-                GetAssemblies(System.Reflection.Assembly.Load(a), assemblyGeneric);
-            }
-            catch (System.IO.FileNotFoundException)
+            System.Reflection.AssemblyName[] names;
+            if (!ignoreMicrosoft)
             {
-                Debug.WriteLine($"Could not find assembly: {a.Name}, Version: {a.Version}", ConsoleColor.DarkRed);
+                names = main.GetReferencedAssemblies().ToArray();
+            }
+            else
+            {
+                names = main.GetReferencedAssemblies().Where(p =>
+                    !p.Name.ToLower().StartsWith("system") &&
+                    !p.Name.ToLower().StartsWith("microsoft") &&
+                    !p.Name.ToLower().StartsWith("mscorlib") &&
+                    !p.Name.ToLower().StartsWith("presentation") &&
+                    !p.Name.ToLower().StartsWith("windows"))
+                    .ToArray();
+            }
+
+            foreach (var a in names)
+            {
+                assemblyGeneric.Add(String.Format("Assembly: {0}, Version: {1}", a.Name, a.Version));
             }
         }
+        catch (Exception) { }
     }
 
     /// <summary>

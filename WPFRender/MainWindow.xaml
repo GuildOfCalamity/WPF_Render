@@ -15,6 +15,7 @@
     WindowStyle="None"
     mc:Ignorable="d">
     <Border
+        x:Name="container"
         Padding="0,0,5,5"
         BorderThickness="0"
         CornerRadius="0"

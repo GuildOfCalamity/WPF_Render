@@ -16,7 +16,7 @@
         <!--#endregion-->
 
         <!--#region [Images]-->
-        <BitmapImage x:Key="background" UriSource="Assets/background.png" />
+        <BitmapImage x:Key="background" UriSource="Assets/background3.png" />
         <Image x:Key="clearAll" Source="Assets/ClearAll.png" />
         <!--#endregion-->
 
