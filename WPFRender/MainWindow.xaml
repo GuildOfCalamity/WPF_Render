@@ -48,6 +48,7 @@
                 Command="{Binding CycleCommand}"
                 Content="Cycle"
                 IsEnabled="{Binding IsBusy, Converter={StaticResource boolToReverse}}"
+                IsTabStop="False"
                 Template="{StaticResource ReformedButton}"
                 ToolTip="Click this button to change the render object type." />
 

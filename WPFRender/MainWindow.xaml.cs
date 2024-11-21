@@ -876,22 +876,36 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             var X = Random.Shared.Next(20, (int)_maxWidth - 100 > 0 ? (int)_maxWidth - 100 : 400);
             var Y = Random.Shared.Next(20, (int)_maxHeight - 100 > 0 ? (int)_maxHeight - 100 : 400);
             var size = Random.Shared.Next(41, 100);
-            GeometryGroup ellipses = new GeometryGroup();
-            ellipses.Children.Add(new EllipseGeometry(new Point(X, Y), size * 2, size / 1.75));
-            ellipses.Children.Add(new EllipseGeometry(new Point(X, Y), size / 1.75, size * 2));
-            ellipses.Children.Add(new EllipseGeometry(new Point(X, Y), size * 2, size * 2));
-            ellipses.Children.Add(new EllipseGeometry(new Point(X, Y), size * 1.25, size * 1.25));
-            GeometryDrawing drawing = new GeometryDrawing();
-            drawing.Geometry = ellipses;
-            //drawing.Brush = new LinearGradientBrush(Colors.Blue, Color.FromRgb(204, 204, 255), new Point(0, 0), new Point(1, 1));
-            drawing.Brush = brush1;
-            drawing.Pen = new Pen(brush2, 12);
+
+            #region [Geometry Group #1]
+            GeometryGroup ellipses1 = new GeometryGroup();
+            ellipses1.Children.Add(new EllipseGeometry(new Point(X, Y), size * 2, size * 2));
+            ellipses1.Children.Add(new EllipseGeometry(new Point(X, Y), size * 1.25, size * 1.25));
+            GeometryDrawing drawing1 = new GeometryDrawing();
+            drawing1.Geometry = ellipses1;
+            drawing1.Brush = brush1;
+            drawing1.Pen = new Pen(brush2, 12);
+            #endregion
+
             var rotate = new RotateTransform(45, size / 2, size / 2);
             var drawingGroup = new DrawingGroup
             {
-                Children = { drawing },
+                Children = { drawing1 },
                 Transform = rotate // you can use a TranslateTransform or a RotateTransform here
             };
+
+            #region [Geometry Group #2]
+            GeometryGroup ellipses2 = new GeometryGroup();
+            GeometryDrawing drawing2 = new GeometryDrawing();
+            ellipses2.Children.Add(new EllipseGeometry(new Point(X, Y), size * 2, size / 1.75));
+            ellipses2.Children.Add(new EllipseGeometry(new Point(X, Y), size / 1.75, size * 2));
+            drawing2.Geometry = ellipses2;
+            drawing2.Brush = new LinearGradientBrush(Colors.Blue, Color.FromRgb(204, 204, 255), new Point(0, 0), new Point(1, 1));
+            drawing2.Pen = new Pen(brush2, 12);
+            #endregion
+
+            drawingGroup.Children.Add(drawing2);
+
             // To use the geometry drawing group on the canvas we'll need to create a DrawingImage.
             DrawingImage drawingImage = new DrawingImage(drawingGroup);
             // An Image is a FrameworkElement, which inherits from UIElement, so it can be added/moved on a Canvas.
